@@ -7,7 +7,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "orders")
+@Table(name = "orders", indexes = {
+    @Index(name = "idx_orders_order_number", columnList = "orderNumber"),
+    @Index(name = "idx_orders_user", columnList = "user_id"),
+    @Index(name = "idx_orders_status", columnList = "orderStatus"),
+    @Index(name = "idx_orders_payment_status", columnList = "paymentStatus"),
+    @Index(name = "idx_orders_created_at", columnList = "createdAt")
+})
 public class Order {
 
     @Id
@@ -22,6 +28,7 @@ public class Order {
     private User user;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @org.hibernate.annotations.BatchSize(size = 25)
     private List<OrderItem> orderItems = new ArrayList<>();
 
     // Shipping Address Snapshot

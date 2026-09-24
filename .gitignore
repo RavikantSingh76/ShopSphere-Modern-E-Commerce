@@ -4,6 +4,13 @@ Thumbs.db
 *.tmp
 *.bak
 
+# Binaries & Executables
+*.exe
+*.dll
+*.so
+*.dylib
+*.bin
+
 # IDE & Editor Files
 .idea/
 *.iml
@@ -18,20 +25,32 @@ server/*.log
 *.class
 *.jar
 *.war
+server/uploads/
 
 # Frontend Dependencies & Build Output
 client/node_modules/
 client/dist/
 client/.vite/
+client/playwright-report/
+client/test-results/
 client/*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Local Database Files
+data/
+*.mv.db
+*.trace.db
+
 # Environment & Secrets
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
+client/.env
+client/.env.*
+!client/.env.example
+*.ps1_secret
+*.audit.json
+all_products_audit.json

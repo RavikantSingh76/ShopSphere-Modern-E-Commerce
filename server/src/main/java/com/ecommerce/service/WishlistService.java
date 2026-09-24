@@ -7,7 +7,6 @@ import com.ecommerce.entity.Product;
 import com.ecommerce.entity.User;
 import com.ecommerce.entity.Wishlist;
 import com.ecommerce.entity.WishlistItem;
-import com.ecommerce.exception.BadRequestException;
 import com.ecommerce.exception.ResourceNotFoundException;
 import com.ecommerce.repository.ProductRepository;
 import com.ecommerce.repository.WishlistItemRepository;

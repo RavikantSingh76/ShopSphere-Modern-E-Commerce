@@ -41,6 +41,9 @@ public class AdminController {
     @Autowired
     private com.ecommerce.config.CatalogDiverseBrandsSeeder catalogDiverseBrandsSeeder;
 
+    @Autowired
+    private com.ecommerce.service.storage.StorageService storageService;
+
     // --- Diverse Brands Catalog Seeder (20+ authentic brands per category) ---
     @PostMapping("/seed-diverse-catalog")
     public ResponseEntity<ApiResponse<Map<String, Object>>> seedDiverseCatalog() {
@@ -113,26 +116,11 @@ public class AdminController {
     @PostMapping("/products/upload-image")
     public ResponseEntity<ApiResponse<Map<String, String>>> uploadProductImage(
             @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Please provide a valid non-empty image file"));
-        }
         try {
-            String uploadDir = "uploads/products";
-            java.io.File dir = new java.io.File(uploadDir);
-            if (!dir.exists()) {
-                dir.mkdirs();
-            }
-            String originalName = file.getOriginalFilename();
-            String ext = ".jpg";
-            if (originalName != null && originalName.contains(".")) {
-                ext = originalName.substring(originalName.lastIndexOf("."));
-            }
-            String fileName = "prod_" + System.currentTimeMillis() + "_" + java.util.UUID.randomUUID().toString().substring(0, 8) + ext;
-            java.nio.file.Path targetPath = java.nio.file.Paths.get(uploadDir, fileName);
-            java.nio.file.Files.copy(file.getInputStream(), targetPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-
-            String fileUrl = "http://localhost:8080/uploads/products/" + fileName;
+            String fileUrl = storageService.upload(file, "products");
             return ResponseEntity.ok(ApiResponse.success("Image uploaded successfully", Map.of("imageUrl", fileUrl)));
+        } catch (com.ecommerce.exception.BadRequestException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("Failed to upload image: " + e.getMessage()));

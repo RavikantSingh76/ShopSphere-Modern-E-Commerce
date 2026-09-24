@@ -14,7 +14,6 @@ import java.math.BigDecimal;
 import java.util.Map;
 
 @RestController
-@CrossOrigin(origins = "*", allowedHeaders = "*")
 public class RazorpayController {
 
     @Autowired

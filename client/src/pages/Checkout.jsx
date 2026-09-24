@@ -215,7 +215,60 @@ export const Checkout = () => {
         return;
       }
 
-      // 2. Online / UPI / Card / NetBanking Payment via Razorpay Live Gateway
+      // 2. Online / UPI / Card / NetBanking Payment
+      const totalToPay = Number(cart.totalAmount || 9);
+      const orderGenRes = await paymentApi.createRazorpayOrder(totalToPay, `rcpt_${Date.now()}`);
+
+      if (!orderGenRes.success || !orderGenRes.data) {
+        toastError('Failed to initialize payment session. Please try again.');
+        setPlacingOrder(false);
+        return;
+      }
+
+      const rzpData = orderGenRes.data;
+      const isDemoMode = !rzpData.razorpayOrderId || rzpData.razorpayOrderId.startsWith('demo_order_');
+
+      if (isDemoMode) {
+        // Simulated Demo Payment Flow (Used when live Razorpay API keys are not configured in environment)
+        const createRes = await orderApi.createOrder({
+          shippingAddress: addressForm,
+          paymentMethod: paymentMethod === 'UPI' ? 'UPI' : paymentMethod === 'CARD' ? 'CARD' : 'ONLINE',
+          couponCode: appliedCoupon ? appliedCoupon.code : null,
+          notes: orderNotes,
+        });
+
+        if (createRes.success && createRes.data) {
+          const fakePaymentId = 'demo_pay_' + Date.now();
+          try {
+            await paymentApi.verifyRazorpayPayment({
+              razorpayOrderId: rzpData.razorpayOrderId,
+              razorpayPaymentId: fakePaymentId,
+              razorpaySignature: 'demo_verified',
+              orderId: createRes.data.id,
+            });
+          } catch (e) {
+            console.warn('Demo verification notice:', e);
+          }
+
+          success('Order Placed Successfully! (Demo Payment Mode)');
+          await refreshCart();
+          navigate('/order-success', {
+            state: {
+              order: {
+                ...createRes.data,
+                paymentStatus: 'PAID',
+                transactionId: fakePaymentId,
+                paymentGateway: 'DEMO Simulated Payment (Test Mode)',
+              },
+            },
+          });
+        } else {
+          toastError(createRes.message || 'Failed to place order.');
+        }
+        return;
+      }
+
+      // Live Razorpay Gateway Flow
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
         toastError('Failed to load secure payment gateway. Please check your internet connection.');
@@ -223,19 +276,8 @@ export const Checkout = () => {
         return;
       }
 
-      const totalToPay = Number(cart.totalAmount || 9);
-      const orderGenRes = await paymentApi.createRazorpayOrder(totalToPay, `rcpt_${Date.now()}`);
-
-      if (!orderGenRes.success || !orderGenRes.data) {
-        toastError('Failed to initialize secure payment session. Please try again.');
-        setPlacingOrder(false);
-        return;
-      }
-
-      const rzpData = orderGenRes.data;
-
       const options = {
-        key: rzpData.keyId || 'rzp_live_TaBVwbfDRE5yH4',
+        key: rzpData.keyId || import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount: rzpData.amountInPaise,
         currency: rzpData.currency || 'INR',
         name: 'ShopSphere',
@@ -251,7 +293,6 @@ export const Checkout = () => {
         handler: async function (response) {
           try {
             setPlacingOrder(true);
-            // Create order on backend only after bank debit
             const createRes = await orderApi.createOrder({
               shippingAddress: addressForm,
               paymentMethod: paymentMethod === 'UPI' ? 'UPI' : paymentMethod === 'CARD' ? 'CARD' : 'ONLINE',
@@ -260,16 +301,16 @@ export const Checkout = () => {
             });
 
             if (createRes.success && createRes.data) {
-              // Verify signature on backend
-              try {
-                await paymentApi.verifyRazorpayPayment({
-                  razorpayOrderId: response.razorpay_order_id || rzpData.razorpayOrderId,
-                  razorpayPaymentId: response.razorpay_payment_id,
-                  razorpaySignature: response.razorpay_signature || 'sig_verified',
-                  orderId: createRes.data.id,
-                });
-              } catch (verifyErr) {
-                console.warn('Verification audit logged:', verifyErr);
+              const verifyRes = await paymentApi.verifyRazorpayPayment({
+                razorpayOrderId: response.razorpay_order_id || rzpData.razorpayOrderId,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature,
+                orderId: createRes.data.id,
+              });
+
+              if (!verifyRes.success) {
+                toastError('Payment verification check failed. Please contact customer support.');
+                return;
               }
 
               success(`Payment Successful! Payment ID: ${response.razorpay_payment_id}`);
@@ -280,7 +321,7 @@ export const Checkout = () => {
                     ...createRes.data,
                     paymentStatus: 'PAID',
                     transactionId: response.razorpay_payment_id,
-                    paymentGateway: 'Razorpay Payment Gateway (Live)',
+                    paymentGateway: 'Razorpay Payment Gateway (Verified)',
                   },
                 },
               });
@@ -289,7 +330,7 @@ export const Checkout = () => {
             }
           } catch (err) {
             console.error('Order creation error post-payment:', err);
-            toastError('Payment successful! Processing order summary...');
+            toastError('Error during payment processing: ' + (err.message || 'Order verification failed'));
             await refreshCart();
             navigate('/track-order');
           } finally {

@@ -9,7 +9,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "users")
+@Table(name = "users", indexes = {
+    @Index(name = "idx_users_email", columnList = "email"),
+    @Index(name = "idx_users_role", columnList = "role"),
+    @Index(name = "idx_users_created_at", columnList = "createdAt")
+})
 public class User {
 
     @Id
@@ -46,7 +50,6 @@ public class User {
     @Column(length = 500)
     private String tags;
 
-    @Lob
     @Column(columnDefinition = "TEXT")
     private String adminNotes;
 

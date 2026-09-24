@@ -34,9 +34,6 @@ public class DataInitializer implements CommandLineRunner {
     private ProductRepository productRepository;
 
     @Autowired
-    private ProductImageRepository productImageRepository;
-
-    @Autowired
     private CouponRepository couponRepository;
 
     @Autowired
@@ -134,6 +131,15 @@ public class DataInitializer implements CommandLineRunner {
             vendor.setPhone("+91 9696675081");
             vendor.setAvatarUrl("/admin-avatar.jpeg");
             userRepository.save(vendor);
+        }
+
+        // Seed Default Demo Customer
+        var custOpt = userRepository.findByEmail("customer@ecommerce.com");
+        if (custOpt.isEmpty()) {
+            User customer = new User("Rahul Sharma", "customer@ecommerce.com", passwordEncoder.encode("Customer@123"), Role.ROLE_CUSTOMER);
+            customer.setPhone("+91 9123456780");
+            customer.setAvatarUrl("https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80");
+            userRepository.save(customer);
         }
 
         // Seed 20+ authentic brands and products per category if catalog has fewer than 120 items

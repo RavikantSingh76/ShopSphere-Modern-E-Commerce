@@ -36,6 +36,9 @@ public class SecurityConfig {
     private AuthEntryPointJwt unauthorizedHandler;
 
     @Autowired
+    private CustomAccessDeniedHandler accessDeniedHandler;
+
+    @Autowired
     private JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173}")
@@ -80,32 +83,47 @@ public class SecurityConfig {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(AbstractHttpConfigurer::disable)
-            .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
+            .exceptionHandling(exception -> exception
+                .authenticationEntryPoint(unauthorizedHandler)
+                .accessDeniedHandler(accessDeniedHandler)
+            )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // H2 Console
+                // Error & H2 Console
+                .requestMatchers("/error").permitAll()
                 .requestMatchers("/h2-console/**").permitAll()
-                // Public Auth Endpoints
+                // Public Auth & Health Endpoints
                 .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/health").permitAll()
+                .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                 // Public Browsing Endpoints
                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/brands/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/reviews/product/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/coupons/validate/**").permitAll()
-                .requestMatchers("/api/orders/track/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/coupons/validate", "/api/coupons/validate/**").permitAll()
+                .requestMatchers("/api/orders/track/**", "/api/orders/*/track").permitAll()
                 .requestMatchers("/api/ai/**").permitAll()
                 .requestMatchers("/api/payment/razorpay/**", "/create-order").permitAll()
                 // Static Uploaded Images
                 .requestMatchers("/uploads/**").permitAll()
                 // Admin Restricted Endpoints (Admin, Operations Manager, and Certified Vendor)
                 .requestMatchers("/api/admin/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_MANAGER", "ROLE_VENDOR")
+                // Non-GET product mutations must require admin authority
+                .requestMatchers(HttpMethod.POST, "/api/products/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_MANAGER")
+                .requestMatchers(HttpMethod.PUT, "/api/products/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_MANAGER")
+                .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_MANAGER")
                 // All other endpoints require authentication
                 .anyRequest().authenticated()
             );
 
-        // Required for H2 Console iframe rendering if dev profile is active
-        http.headers(headers -> headers.frameOptions(frame -> frame.disable()));
+        // Security Headers: clickjacking protection (sameOrigin enables H2 console while blocking external iframes), nosniff, referrer and permissions policies
+        http.headers(headers -> headers
+            .frameOptions(frame -> frame.sameOrigin())
+            .contentTypeOptions(org.springframework.security.config.Customizer.withDefaults())
+            .referrerPolicy(referrer -> referrer.policy(org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+            .permissionsPolicy(permissions -> permissions.policy("camera=(), microphone=(), geolocation=()"))
+        );
 
         http.authenticationProvider(authenticationProvider());
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

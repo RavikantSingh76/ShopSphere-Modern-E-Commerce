@@ -1,8 +1,10 @@
 package com.ecommerce.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import java.io.Serializable;
 
-public class CategoryDto {
+public class CategoryDto implements Serializable {
+    private static final long serialVersionUID = 1L;
     private Long id;
 
     @NotBlank(message = "Category name is required")

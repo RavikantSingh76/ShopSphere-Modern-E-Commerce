@@ -6,9 +6,7 @@ import com.ecommerce.dto.ReviewResponse;
 import com.ecommerce.entity.Product;
 import com.ecommerce.entity.Review;
 import com.ecommerce.entity.User;
-import com.ecommerce.exception.BadRequestException;
 import com.ecommerce.exception.ResourceNotFoundException;
-import com.ecommerce.repository.OrderRepository;
 import com.ecommerce.repository.ProductRepository;
 import com.ecommerce.repository.ReviewRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,9 +27,6 @@ public class ReviewService {
 
     @Autowired
     private ProductRepository productRepository;
-
-    @Autowired
-    private OrderRepository orderRepository;
 
     public PagedResponse<ReviewResponse> getProductReviews(Long productId, int page, int size) {
         Product product = productRepository.findById(productId)
@@ -94,6 +89,37 @@ public class ReviewService {
         }
 
         return mapToResponse(saved);
+    }
+
+    @Transactional
+    public void deleteReview(Long reviewId, User user) {
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new ResourceNotFoundException("Review", "id", reviewId));
+
+        boolean isOwner = review.getUser() != null && review.getUser().getId().equals(user.getId());
+        boolean isAdmin = user.getRole() == com.ecommerce.entity.Role.ROLE_ADMIN || user.getRole() == com.ecommerce.entity.Role.ROLE_MANAGER;
+
+        if (!isOwner && !isAdmin) {
+            throw new com.ecommerce.exception.UnauthorizedException("You do not have permission to delete this review");
+        }
+
+        Product product = review.getProduct();
+        reviewRepository.delete(review);
+
+        if (product != null) {
+            List<Object[]> stats = reviewRepository.getAverageRatingAndCount(product.getId());
+            if (stats != null && !stats.isEmpty()) {
+                Object[] row = stats.get(0);
+                Double avgRating = (Double) row[0];
+                Long count = (Long) row[1];
+                product.setAverageRating(avgRating != null ? Math.round(avgRating * 10.0) / 10.0 : 0.0);
+                product.setReviewCount(count != null ? count.intValue() : 0);
+            } else {
+                product.setAverageRating(0.0);
+                product.setReviewCount(0);
+            }
+            productRepository.save(product);
+        }
     }
 
     public ReviewResponse mapToResponse(Review review) {

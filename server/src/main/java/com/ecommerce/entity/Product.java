@@ -7,7 +7,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "products")
+@Table(name = "products", indexes = {
+    @Index(name = "idx_products_sku", columnList = "sku"),
+    @Index(name = "idx_products_name", columnList = "name"),
+    @Index(name = "idx_products_active", columnList = "active"),
+    @Index(name = "idx_products_category", columnList = "category_id"),
+    @Index(name = "idx_products_brand", columnList = "brand_id"),
+    @Index(name = "idx_products_price", columnList = "price"),
+    @Index(name = "idx_products_rating", columnList = "averageRating")
+})
 public class Product {
 
     @Id
@@ -45,6 +53,7 @@ public class Product {
     private Brand brand;
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @org.hibernate.annotations.BatchSize(size = 25)
     @OrderBy("displayOrder ASC")
     private List<ProductImage> images = new ArrayList<>();
 

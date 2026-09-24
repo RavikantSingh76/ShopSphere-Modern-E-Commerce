@@ -45,9 +45,6 @@ public class OrderService {
     private PaymentRepository paymentRepository;
 
     @Autowired
-    private AddressRepository addressRepository;
-
-    @Autowired
     private FulfillmentService fulfillmentService;
 
     private final Random random = new Random();
@@ -61,14 +58,20 @@ public class OrderService {
             throw new BadRequestException("Your shopping cart is empty");
         }
 
-        // Validate stock availability
+        // Validate stock availability and recalculate subtotal using live product catalog prices
         BigDecimal subtotal = BigDecimal.ZERO;
         for (CartItem item : cart.getItems()) {
             Product product = item.getProduct();
-            if (!product.isActive() || product.getStockQuantity() < item.getQuantity()) {
+            if (!product.isActive()) {
+                throw new BadRequestException("Product '" + product.getName() + "' is currently unavailable.");
+            }
+            if (product.getStockQuantity() < item.getQuantity()) {
                 throw new BadRequestException("Product '" + product.getName() + "' is out of stock or insufficient quantity available.");
             }
-            subtotal = subtotal.add(item.getItemTotal());
+            // Real-time authoritative price validation against catalog
+            BigDecimal currentPrice = product.getDiscountedPrice();
+            item.setUnitPrice(currentPrice);
+            subtotal = subtotal.add(currentPrice.multiply(BigDecimal.valueOf(item.getQuantity())));
         }
 
         // Calculate discount
@@ -80,6 +83,9 @@ public class OrderService {
                 Coupon coupon = couponOpt.get();
                 if (coupon.isValidFor(subtotal)) {
                     discountAmount = coupon.calculateDiscount(subtotal);
+                    if (discountAmount.compareTo(subtotal) > 0) {
+                        discountAmount = subtotal;
+                    }
                     appliedCouponCode = coupon.getCode();
                     coupon.setTimesUsed(coupon.getTimesUsed() + 1);
                     couponRepository.save(coupon);
@@ -106,38 +112,13 @@ public class OrderService {
         order.setPaymentMethod(method);
         if (method == PaymentMethod.COD) {
             order.setPaymentStatus(PaymentStatus.PENDING);
-            order.setTransactionId("COD-VERIFY-" + (System.currentTimeMillis() % 1000000));
+            order.setTransactionId("COD-PENDING-" + (System.currentTimeMillis() % 1000000));
             order.setPaymentGateway("Cash on Delivery (Pay at Doorstep)");
-        } else if (method == PaymentMethod.UPI) {
-            order.setPaymentStatus(PaymentStatus.PAID);
-            order.setTransactionId("UPI-7607805940@jio-" + (10000000 + random.nextInt(90000000)));
-            order.setPaymentGateway("Direct UPI Pay (VPA: 7607805940@jio - ShopSphere)");
-            order.setPaidAt(LocalDateTime.now());
-        } else if (method == PaymentMethod.CARD) {
-            order.setPaymentStatus(PaymentStatus.PAID);
-            order.setTransactionId("TXN-CARD-" + (10000000 + random.nextInt(90000000)));
-            order.setPaymentGateway("Stripe Secure Payment Gateway (3D Secure)");
-            order.setPaidAt(LocalDateTime.now());
-        } else if (method == PaymentMethod.NETBANKING) {
-            order.setPaymentStatus(PaymentStatus.PAID);
-            order.setTransactionId("TXN-NB-" + (10000000 + random.nextInt(90000000)));
-            order.setPaymentGateway("Direct Indian NetBanking (Instant Verified)");
-            order.setPaidAt(LocalDateTime.now());
-        } else if (method == PaymentMethod.WALLET) {
-            order.setPaymentStatus(PaymentStatus.PAID);
-            order.setTransactionId("TXN-WLT-" + (10000000 + random.nextInt(90000000)));
-            order.setPaymentGateway("Digital E-Wallet Gateway (Pre-Authorized)");
-            order.setPaidAt(LocalDateTime.now());
-        } else if (method == PaymentMethod.EMI) {
-            order.setPaymentStatus(PaymentStatus.PAID);
-            order.setTransactionId("TXN-EMI-" + (10000000 + random.nextInt(90000000)));
-            order.setPaymentGateway("No-Cost 0% EMI Processing Partner");
-            order.setPaidAt(LocalDateTime.now());
         } else {
-            order.setPaymentStatus(PaymentStatus.PAID);
-            order.setTransactionId("TXN-ONL-" + (10000000 + random.nextInt(90000000)));
-            order.setPaymentGateway("Instant Online Gateway");
-            order.setPaidAt(LocalDateTime.now());
+            // Online orders start in PENDING payment status until verified via payment gateway
+            order.setPaymentStatus(PaymentStatus.PENDING);
+            order.setTransactionId("TXN-" + System.currentTimeMillis() + "-" + (1000 + random.nextInt(9000)));
+            order.setPaymentGateway(method.name() + " Gateway");
         }
         order.setTrackingNumber("TRK-" + (10000000 + random.nextInt(90000000)));
         order.setCourierName("Express Courier Services");
@@ -164,12 +145,15 @@ public class OrderService {
 
         Order savedOrder = orderRepository.save(order);
 
-        // Convert cart items to order items and deduct product catalogue stock
+        // Convert cart items to order items and deduct product catalogue stock atomically to prevent race conditions
         List<OrderItem> orderItems = new ArrayList<>();
         for (CartItem cartItem : cart.getItems()) {
             Product product = cartItem.getProduct();
-            product.setStockQuantity(Math.max(0, product.getStockQuantity() - cartItem.getQuantity()));
-            productRepository.save(product);
+            int rowsUpdated = productRepository.decrementStockIfAvailable(product.getId(), cartItem.getQuantity());
+            if (rowsUpdated == 0) {
+                throw new BadRequestException("Insufficient stock for product '" + product.getName() + "'. Please adjust your cart quantity.");
+            }
+            product.setStockQuantity(product.getStockQuantity() - cartItem.getQuantity());
 
             OrderItem orderItem = new OrderItem(
                     savedOrder,
@@ -319,7 +303,29 @@ public class OrderService {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order", "id", id));
 
+        OrderStatus previousStatus = order.getOrderStatus();
         order.setOrderStatus(request.getStatus());
+
+        if (request.getStatus() == OrderStatus.CANCELLED && previousStatus != OrderStatus.CANCELLED) {
+            // Restore catalogue stock
+            if (order.getOrderItems() != null) {
+                for (OrderItem item : order.getOrderItems()) {
+                    if (item.getProduct() != null) {
+                        Product p = item.getProduct();
+                        p.setStockQuantity(p.getStockQuantity() + item.getQuantity());
+                        productRepository.save(p);
+                    }
+                }
+            }
+            // Release warehouse reserved stock
+            try {
+                fulfillmentService.releaseReservedInventory(order);
+            } catch (Exception ignored) {}
+
+            if (order.getPaymentStatus() == PaymentStatus.PAID) {
+                order.setPaymentStatus(PaymentStatus.REFUNDED);
+            }
+        }
 
         if (request.getStatus() == OrderStatus.DELIVERED) {
             order.setPaymentStatus(PaymentStatus.PAID);

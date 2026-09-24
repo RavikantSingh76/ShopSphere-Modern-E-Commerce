@@ -23,7 +23,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -108,16 +107,15 @@ public class AdminService {
         }
 
         int currentYear = LocalDate.now().getYear();
-        List<com.ecommerce.entity.Order> allOrders = orderRepository.findAll();
-        for (com.ecommerce.entity.Order ord : allOrders) {
-            if (ord.getOrderStatus() != OrderStatus.CANCELLED && ord.getCreatedAt() != null) {
-                if (ord.getCreatedAt().getYear() == currentYear) {
-                    int monthIdx = ord.getCreatedAt().getMonthValue() - 1;
-                    if (monthIdx >= 0 && monthIdx < 12) {
-                        String mKey = months[monthIdx];
-                        BigDecimal existing = monthlySales.getOrDefault(mKey, BigDecimal.ZERO);
-                        BigDecimal orderAmt = ord.getTotalAmount() != null ? ord.getTotalAmount() : BigDecimal.ZERO;
-                        monthlySales.put(mKey, existing.add(orderAmt).setScale(2, java.math.RoundingMode.HALF_UP));
+        List<Object[]> salesData = orderRepository.findMonthlySalesByYear(currentYear);
+        if (salesData != null) {
+            for (Object[] row : salesData) {
+                if (row != null && row.length >= 2 && row[0] != null && row[1] != null) {
+                    int monthNumber = ((Number) row[0]).intValue();
+                    BigDecimal monthTotal = (BigDecimal) row[1];
+                    if (monthNumber >= 1 && monthNumber <= 12) {
+                        String mKey = months[monthNumber - 1];
+                        monthlySales.put(mKey, monthTotal.setScale(2, java.math.RoundingMode.HALF_UP));
                     }
                 }
             }

@@ -1,7 +1,5 @@
 package com.ecommerce.service;
 
-import com.ecommerce.dto.CategoryDto;
-import com.ecommerce.dto.BrandDto;
 import com.ecommerce.dto.PagedResponse;
 import com.ecommerce.dto.ProductRequest;
 import com.ecommerce.dto.ProductResponse;
@@ -9,11 +7,9 @@ import com.ecommerce.entity.Brand;
 import com.ecommerce.entity.Category;
 import com.ecommerce.entity.Product;
 import com.ecommerce.entity.ProductImage;
-import com.ecommerce.exception.BadRequestException;
 import com.ecommerce.exception.ResourceNotFoundException;
 import com.ecommerce.repository.BrandRepository;
 import com.ecommerce.repository.CategoryRepository;
-import com.ecommerce.repository.ProductImageRepository;
 import com.ecommerce.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -41,9 +37,6 @@ public class ProductService {
 
     @Autowired
     private BrandRepository brandRepository;
-
-    @Autowired
-    private ProductImageRepository productImageRepository;
 
     @Autowired
     private CategoryService categoryService;
@@ -127,12 +120,14 @@ public class ProductService {
         );
     }
 
+    @org.springframework.cache.annotation.Cacheable(value = "products", key = "'id_' + #id")
     public ProductResponse getProductById(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product", "id", id));
         return mapToResponse(product);
     }
 
+    @org.springframework.cache.annotation.Cacheable(value = "products", key = "'slug_' + #slug")
     public ProductResponse getProductBySlug(String slug) {
         Product product = productRepository.findBySlug(slug)
                 .orElseThrow(() -> new ResourceNotFoundException("Product", "slug", slug));
@@ -175,6 +170,7 @@ public class ProductService {
     }
 
     @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = {"products", "categories"}, allEntries = true)
     public ProductResponse createProduct(ProductRequest request) {
         String slug = request.getSlug();
         if (slug == null || slug.isBlank()) {
@@ -313,6 +309,7 @@ public class ProductService {
     }
 
     @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = {"products", "categories"}, allEntries = true)
     public ProductResponse updateProduct(Long id, ProductRequest request) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product", "id", id));
@@ -386,6 +383,7 @@ public class ProductService {
     }
 
     @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = {"products", "categories"}, allEntries = true)
     public void deleteProduct(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product", "id", id));

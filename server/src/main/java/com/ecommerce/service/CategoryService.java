@@ -18,22 +18,26 @@ public class CategoryService {
     @Autowired
     private CategoryRepository categoryRepository;
 
+    @org.springframework.cache.annotation.Cacheable(value = "categories", key = "'active'")
     public List<CategoryDto> getAllActiveCategories() {
         return categoryRepository.findByActiveTrueOrderByDisplayOrderAsc()
                 .stream().map(this::mapToDto).collect(Collectors.toList());
     }
 
+    @org.springframework.cache.annotation.Cacheable(value = "categories", key = "'all'")
     public List<CategoryDto> getAllCategories() {
         return categoryRepository.findAll()
                 .stream().map(this::mapToDto).collect(Collectors.toList());
     }
 
+    @org.springframework.cache.annotation.Cacheable(value = "categories", key = "'id_' + #id")
     public CategoryDto getCategoryById(Long id) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Category", "id", id));
         return mapToDto(category);
     }
 
+    @org.springframework.cache.annotation.Cacheable(value = "categories", key = "'slug_' + #slug")
     public CategoryDto getCategoryBySlug(String slug) {
         Category category = categoryRepository.findBySlug(slug)
                 .orElseThrow(() -> new ResourceNotFoundException("Category", "slug", slug));
@@ -41,6 +45,7 @@ public class CategoryService {
     }
 
     @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = "categories", allEntries = true)
     public CategoryDto createCategory(CategoryDto dto) {
         if (categoryRepository.existsByNameIgnoreCase(dto.getName())) {
             throw new BadRequestException("Category with name '" + dto.getName() + "' already exists");
@@ -65,6 +70,7 @@ public class CategoryService {
     }
 
     @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = "categories", allEntries = true)
     public CategoryDto updateCategory(Long id, CategoryDto dto) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Category", "id", id));
@@ -84,6 +90,7 @@ public class CategoryService {
     }
 
     @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = "categories", allEntries = true)
     public void deleteCategory(Long id) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Category", "id", id));

@@ -3,7 +3,6 @@ package com.ecommerce.service;
 import com.ecommerce.dto.AuthResponse;
 import com.ecommerce.dto.LoginRequest;
 import com.ecommerce.dto.RegisterRequest;
-import com.ecommerce.dto.UserDto;
 import com.ecommerce.entity.Role;
 import com.ecommerce.entity.User;
 import com.ecommerce.exception.BadRequestException;
@@ -11,6 +10,8 @@ import com.ecommerce.exception.ResourceNotFoundException;
 import com.ecommerce.repository.UserRepository;
 import com.ecommerce.security.CustomUserDetails;
 import com.ecommerce.security.JwtUtils;
+import com.ecommerce.security.LoginRateLimiterService;
+import com.ecommerce.exception.TooManyRequestsException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -35,6 +36,9 @@ public class AuthService {
     @Autowired
     private JwtUtils jwtUtils;
 
+    @Autowired
+    private LoginRateLimiterService loginRateLimiterService;
+
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
@@ -46,7 +50,8 @@ public class AuthService {
         user.setEmail(request.getEmail().toLowerCase().trim());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setPhone(request.getPhone());
-        user.setRole(request.getRole() != null ? request.getRole() : Role.ROLE_CUSTOMER);
+        // Security: Public registration always assigns ROLE_CUSTOMER to prevent privilege escalation
+        user.setRole(Role.ROLE_CUSTOMER);
         user.setEnabled(true);
         user.setAvatarUrl("https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80");
 
@@ -67,9 +72,30 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail().toLowerCase().trim(), request.getPassword())
-        );
+        String email = request.getEmail().toLowerCase().trim();
+
+        // Security: Brute-force protection
+        if (loginRateLimiterService.isBlocked(email)) {
+            int remainingSeconds = loginRateLimiterService.getRemainingLockoutSeconds(email);
+            throw new TooManyRequestsException(
+                    "Too many failed login attempts. Account temporarily locked. Please try again in " +
+                    (remainingSeconds > 60 ? (remainingSeconds / 60 + 1) + " minutes." : remainingSeconds + " seconds."),
+                    remainingSeconds
+            );
+        }
+
+        Authentication authentication;
+        try {
+            authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(email, request.getPassword())
+            );
+        } catch (org.springframework.security.authentication.BadCredentialsException ex) {
+            loginRateLimiterService.recordFailure(email);
+            throw ex;
+        }
+
+        // Reset rate limiter on successful authentication
+        loginRateLimiterService.recordSuccess(email);
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();

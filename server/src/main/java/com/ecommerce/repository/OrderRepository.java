@@ -41,4 +41,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     @Query("SELECT COUNT(o) FROM Order o WHERE o.deliveryPartner.id = :partnerId AND o.orderStatus IN ('OUT_FOR_DELIVERY', 'READY_TO_SHIP')")
     long countActiveOrdersByPartnerId(@Param("partnerId") Long partnerId);
+
+    @Query("SELECT MONTH(o.createdAt), SUM(o.totalAmount) FROM Order o WHERE o.orderStatus <> 'CANCELLED' AND YEAR(o.createdAt) = :year GROUP BY MONTH(o.createdAt)")
+    List<Object[]> findMonthlySalesByYear(@Param("year") int year);
 }

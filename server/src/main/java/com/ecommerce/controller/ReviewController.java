@@ -45,4 +45,11 @@ public class ReviewController {
         User user = authService.getCurrentAuthenticatedUser();
         return ResponseEntity.ok(ApiResponse.success(reviewService.getUserReviews(user)));
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteReview(@PathVariable Long id) {
+        User user = authService.getCurrentAuthenticatedUser();
+        reviewService.deleteReview(id, user);
+        return ResponseEntity.ok(ApiResponse.success("Review deleted successfully", null));
+    }
 }
