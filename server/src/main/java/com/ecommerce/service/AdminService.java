@@ -170,7 +170,7 @@ public class AdminService {
 
         String rawPassword = (dto.getPassword() != null && !dto.getPassword().isBlank())
                 ? dto.getPassword().trim()
-                : "Customer@123";
+                : java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 12);
 
         User user = new User();
         user.setName(dto.getName().trim());

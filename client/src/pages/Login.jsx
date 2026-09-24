@@ -27,14 +27,20 @@ export const Login = () => {
     }
   };
 
+  const isDemoLoginEnabled = import.meta.env.VITE_ENABLE_DEMO_LOGIN === 'true';
+  const demoAdminEmail = import.meta.env.VITE_DEMO_ADMIN_EMAIL || '';
+  const demoAdminPassword = import.meta.env.VITE_DEMO_ADMIN_PASSWORD || '';
+  const demoCustomerEmail = import.meta.env.VITE_DEMO_CUSTOMER_EMAIL || '';
+  const demoCustomerPassword = import.meta.env.VITE_DEMO_CUSTOMER_PASSWORD || '';
+
   const handleDemoAdmin = () => {
-    setEmail('ravikantsinghravi366@gmail.com');
-    setPassword('Admin@123');
+    if (demoAdminEmail) setEmail(demoAdminEmail);
+    if (demoAdminPassword) setPassword(demoAdminPassword);
   };
 
   const handleDemoCustomer = () => {
-    setEmail('customer@ecommerce.com');
-    setPassword('Customer@123');
+    if (demoCustomerEmail) setEmail(demoCustomerEmail);
+    if (demoCustomerPassword) setPassword(demoCustomerPassword);
   };
 
   return (
@@ -55,30 +61,32 @@ export const Login = () => {
           </p>
         </div>
 
-        {/* Demo Fast Login Pills */}
-        <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2">
-          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">
-            ⚡ Quick Demo Accounts
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={handleDemoCustomer}
-              className="py-1.5 px-3 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-emerald-50 hover:text-emerald-700 border border-slate-200 transition-all flex items-center justify-center gap-1.5 shadow-sm"
-            >
-              <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Customer Demo</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleDemoAdmin}
-              className="py-1.5 px-3 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-emerald-50 hover:text-emerald-700 border border-slate-200 transition-all flex items-center justify-center gap-1.5 shadow-sm"
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Admin Demo</span>
-            </button>
+        {/* Optional Demo Fast Login Pills (Disabled by default; enabled via VITE_ENABLE_DEMO_LOGIN) */}
+        {isDemoLoginEnabled && (
+          <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2">
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">
+              ⚡ Quick Demo Accounts
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={handleDemoCustomer}
+                className="py-1.5 px-3 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-emerald-50 hover:text-emerald-700 border border-slate-200 transition-all flex items-center justify-center gap-1.5 shadow-sm"
+              >
+                <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Customer Demo</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleDemoAdmin}
+                className="py-1.5 px-3 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-emerald-50 hover:text-emerald-700 border border-slate-200 transition-all flex items-center justify-center gap-1.5 shadow-sm"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Admin Demo</span>
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Login Form */}
         <form onSubmit={handleSubmit} className="space-y-4">

@@ -9,8 +9,8 @@ test.describe('Security, Authentication, and RBAC Verification Suite', () => {
     if (await demoBtn.isVisible()) {
       await demoBtn.click();
     } else {
-      await form.locator('input[type="email"]').fill('customer@ecommerce.com');
-      await form.locator('input[type="password"]').fill('Customer@123');
+      await form.locator('input[type="email"]').fill(process.env.TEST_CUSTOMER_EMAIL || process.env.VITE_DEMO_CUSTOMER_EMAIL || 'customer@ecommerce.com');
+      await form.locator('input[type="password"]').fill(process.env.TEST_CUSTOMER_PASSWORD || process.env.VITE_DEMO_CUSTOMER_PASSWORD || '');
     }
     await form.locator('button[type="submit"]').click();
     await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 10000 });
@@ -37,8 +37,8 @@ test.describe('Security, Authentication, and RBAC Verification Suite', () => {
     // 1. Authenticate customer to obtain JWT token
     const loginRes = await request.post('http://localhost:8080/api/auth/login', {
       data: {
-        email: 'customer@ecommerce.com',
-        password: 'Customer@123',
+        email: process.env.TEST_CUSTOMER_EMAIL || process.env.VITE_DEMO_CUSTOMER_EMAIL || 'customer@ecommerce.com',
+        password: process.env.TEST_CUSTOMER_PASSWORD || process.env.VITE_DEMO_CUSTOMER_PASSWORD || '',
       },
     });
     expect(loginRes.status()).toBe(200);
@@ -65,8 +65,8 @@ test.describe('Security, Authentication, and RBAC Verification Suite', () => {
   test('User authentication endpoint does NOT expose raw password or hash in response', async ({ request }) => {
     const loginRes = await request.post('http://localhost:8080/api/auth/login', {
       data: {
-        email: 'customer@ecommerce.com',
-        password: 'Customer@123',
+        email: process.env.TEST_CUSTOMER_EMAIL || process.env.VITE_DEMO_CUSTOMER_EMAIL || 'customer@ecommerce.com',
+        password: process.env.TEST_CUSTOMER_PASSWORD || process.env.VITE_DEMO_CUSTOMER_PASSWORD || '',
       },
     });
     expect(loginRes.status()).toBe(200);

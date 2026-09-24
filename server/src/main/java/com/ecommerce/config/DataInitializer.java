@@ -66,6 +66,30 @@ public class DataInitializer implements CommandLineRunner {
     @org.springframework.beans.factory.annotation.Value("${app.seed-sample-data:false}")
     private boolean seedSampleData;
 
+    @org.springframework.beans.factory.annotation.Value("${app.demo.admin-email:${DEMO_ADMIN_EMAIL:ravikantsinghravi366@gmail.com}}")
+    private String demoAdminEmail;
+
+    @org.springframework.beans.factory.annotation.Value("${app.demo.admin-password:${DEMO_ADMIN_PASSWORD:}}")
+    private String demoAdminPassword;
+
+    @org.springframework.beans.factory.annotation.Value("${app.demo.customer-email:${DEMO_CUSTOMER_EMAIL:customer@ecommerce.com}}")
+    private String demoCustomerEmail;
+
+    @org.springframework.beans.factory.annotation.Value("${app.demo.customer-password:${DEMO_CUSTOMER_PASSWORD:}}")
+    private String demoCustomerPassword;
+
+    @org.springframework.beans.factory.annotation.Value("${app.demo.manager-email:${DEMO_MANAGER_EMAIL:manager.ravi@ecommerce.com}}")
+    private String demoManagerEmail;
+
+    @org.springframework.beans.factory.annotation.Value("${app.demo.manager-password:${DEMO_MANAGER_PASSWORD:}}")
+    private String demoManagerPassword;
+
+    @org.springframework.beans.factory.annotation.Value("${app.demo.vendor-email:${DEMO_VENDOR_EMAIL:vendor.ravi@ecommerce.com}}")
+    private String demoVendorEmail;
+
+    @org.springframework.beans.factory.annotation.Value("${app.demo.vendor-password:${DEMO_VENDOR_PASSWORD:}}")
+    private String demoVendorPassword;
+
     @Override
     public void run(String... args) throws Exception {
         try {
@@ -91,55 +115,63 @@ public class DataInitializer implements CommandLineRunner {
             } catch (Exception ignored) {}
         } catch (Exception ignored) {}
 
-        // Ensure Admin user with ravikantsinghravi366@gmail.com and custom photo is always updated/created
-        var adminOpt = userRepository.findByEmail("admin@ecommerce.com");
-        if (adminOpt.isPresent()) {
-            User existingAdmin = adminOpt.get();
-            existingAdmin.setEmail("ravikantsinghravi366@gmail.com");
-            existingAdmin.setName("Ravikant Singh");
-            existingAdmin.setAvatarUrl("/admin-avatar.jpeg");
-            userRepository.save(existingAdmin);
+        // Ensure Admin user is updated/created only if configured
+        if (demoAdminEmail != null && !demoAdminEmail.isBlank() && demoAdminPassword != null && !demoAdminPassword.isBlank()) {
+            var adminOpt = userRepository.findByEmail("admin@ecommerce.com");
+            if (adminOpt.isPresent()) {
+                User existingAdmin = adminOpt.get();
+                existingAdmin.setEmail(demoAdminEmail);
+                existingAdmin.setName("Ravikant Singh");
+                existingAdmin.setAvatarUrl("/admin-avatar.jpeg");
+                userRepository.save(existingAdmin);
+            }
+
+            var raviOpt = userRepository.findByEmail(demoAdminEmail);
+            if (raviOpt.isEmpty()) {
+                User admin = new User("Ravikant Singh", demoAdminEmail, passwordEncoder.encode(demoAdminPassword), Role.ROLE_ADMIN);
+                admin.setPhone("+91 9696675081");
+                admin.setAvatarUrl("/admin-avatar.jpeg");
+                userRepository.save(admin);
+            } else {
+                User ravi = raviOpt.get();
+                ravi.setAvatarUrl("/admin-avatar.jpeg");
+                ravi.setName("Ravikant Singh");
+                ravi.setPhone("+91 9696675081");
+                userRepository.save(ravi);
+            }
         }
 
-        var raviOpt = userRepository.findByEmail("ravikantsinghravi366@gmail.com");
-        if (raviOpt.isEmpty()) {
-            User admin = new User("Ravikant Singh", "ravikantsinghravi366@gmail.com", passwordEncoder.encode("Admin@123"), Role.ROLE_ADMIN);
-            admin.setPhone("+91 9696675081");
-            admin.setAvatarUrl("/admin-avatar.jpeg");
-            userRepository.save(admin);
-        } else {
-            User ravi = raviOpt.get();
-            ravi.setAvatarUrl("/admin-avatar.jpeg");
-            ravi.setName("Ravikant Singh");
-            ravi.setPhone("+91 9696675081");
-            userRepository.save(ravi);
+        // Seed Store Operations Manager if configured
+        if (demoManagerEmail != null && !demoManagerEmail.isBlank() && demoManagerPassword != null && !demoManagerPassword.isBlank()) {
+            var mgrOpt = userRepository.findByEmail(demoManagerEmail);
+            if (mgrOpt.isEmpty()) {
+                User manager = new User("Ravikant Singh", demoManagerEmail, passwordEncoder.encode(demoManagerPassword), Role.ROLE_MANAGER);
+                manager.setPhone("+91 9696675081");
+                manager.setAvatarUrl("/admin-avatar.jpeg");
+                userRepository.save(manager);
+            }
         }
 
-        // Seed Ravikant Singh as Store Operations Manager
-        var mgrOpt = userRepository.findByEmail("manager.ravi@ecommerce.com");
-        if (mgrOpt.isEmpty()) {
-            User manager = new User("Ravikant Singh", "manager.ravi@ecommerce.com", passwordEncoder.encode("Manager@123"), Role.ROLE_MANAGER);
-            manager.setPhone("+91 9696675081");
-            manager.setAvatarUrl("/admin-avatar.jpeg");
-            userRepository.save(manager);
+        // Seed Certified Vendor & Manufacturer if configured
+        if (demoVendorEmail != null && !demoVendorEmail.isBlank() && demoVendorPassword != null && !demoVendorPassword.isBlank()) {
+            var vendorOpt = userRepository.findByEmail(demoVendorEmail);
+            if (vendorOpt.isEmpty()) {
+                User vendor = new User("Ravikant Singh", demoVendorEmail, passwordEncoder.encode(demoVendorPassword), Role.ROLE_VENDOR);
+                vendor.setPhone("+91 9696675081");
+                vendor.setAvatarUrl("/admin-avatar.jpeg");
+                userRepository.save(vendor);
+            }
         }
 
-        // Seed Ravikant Singh as Certified Vendor & Manufacturer
-        var vendorOpt = userRepository.findByEmail("vendor.ravi@ecommerce.com");
-        if (vendorOpt.isEmpty()) {
-            User vendor = new User("Ravikant Singh", "vendor.ravi@ecommerce.com", passwordEncoder.encode("Vendor@123"), Role.ROLE_VENDOR);
-            vendor.setPhone("+91 9696675081");
-            vendor.setAvatarUrl("/admin-avatar.jpeg");
-            userRepository.save(vendor);
-        }
-
-        // Seed Default Demo Customer
-        var custOpt = userRepository.findByEmail("customer@ecommerce.com");
-        if (custOpt.isEmpty()) {
-            User customer = new User("Rahul Sharma", "customer@ecommerce.com", passwordEncoder.encode("Customer@123"), Role.ROLE_CUSTOMER);
-            customer.setPhone("+91 9123456780");
-            customer.setAvatarUrl("https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80");
-            userRepository.save(customer);
+        // Seed Default Demo Customer if configured
+        if (demoCustomerEmail != null && !demoCustomerEmail.isBlank() && demoCustomerPassword != null && !demoCustomerPassword.isBlank()) {
+            var custOpt = userRepository.findByEmail(demoCustomerEmail);
+            if (custOpt.isEmpty()) {
+                User customer = new User("Rahul Sharma", demoCustomerEmail, passwordEncoder.encode(demoCustomerPassword), Role.ROLE_CUSTOMER);
+                customer.setPhone("+91 9123456780");
+                customer.setAvatarUrl("https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80");
+                userRepository.save(customer);
+            }
         }
 
         // Seed 20+ authentic brands and products per category if catalog has fewer than 120 items
@@ -159,12 +191,16 @@ public class DataInitializer implements CommandLineRunner {
         if (!seedSampleData) {
             System.out.println(">>> Sample data seeding is DISABLED (app.seed-sample-data=false).");
             System.out.println(">>> App will only use authentic data from the connected database without inserting any random/dummy data.");
-            System.out.println(">>> Admin account ready: ravikantsinghravi366@gmail.com");
+            if (demoAdminEmail != null && !demoAdminEmail.isBlank()) {
+                System.out.println(">>> Admin account ready: " + demoAdminEmail);
+            }
             return;
         }
 
-        User customer = userRepository.findByEmail("customer@ecommerce.com").orElseGet(() -> {
-            User c = new User("Rahul Sharma", "customer@ecommerce.com", passwordEncoder.encode("Customer@123"), Role.ROLE_CUSTOMER);
+        String targetCustEmail = (demoCustomerEmail != null && !demoCustomerEmail.isBlank()) ? demoCustomerEmail : "customer@ecommerce.com";
+        String targetCustPass = (demoCustomerPassword != null && !demoCustomerPassword.isBlank()) ? demoCustomerPassword : java.util.UUID.randomUUID().toString();
+        User customer = userRepository.findByEmail(targetCustEmail).orElseGet(() -> {
+            User c = new User("Rahul Sharma", targetCustEmail, passwordEncoder.encode(targetCustPass), Role.ROLE_CUSTOMER);
             c.setPhone("+91 9123456780");
             c.setAvatarUrl("https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80");
             c = userRepository.save(c);
@@ -722,8 +758,7 @@ public class DataInitializer implements CommandLineRunner {
         bulkProductService.repairAndAlignAllProductImages();
 
         System.out.println(">>> E-Commerce Platform Data Initialization Completed Successfully!");
-        System.out.println(">>> Default Admin: admin@ecommerce.com / Admin@123");
-        System.out.println(">>> Default Customer: customer@ecommerce.com / Customer@123");
+        System.out.println(">>> Seed accounts configured via environment properties.");
     }
 
     private Product createProduct(

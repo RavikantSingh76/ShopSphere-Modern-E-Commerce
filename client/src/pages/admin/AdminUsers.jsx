@@ -1443,10 +1443,10 @@ export const AdminUsers = () => {
                   />
                 </div>
                 <div>
-                  <label className="block font-bold text-slate-300 mb-1">Password (Leave blank for default)</label>
+                  <label className="block font-bold text-slate-300 mb-1">Password (Leave blank to generate random)</label>
                   <input
-                    type="text"
-                    placeholder="Default: Customer@123"
+                    type="password"
+                    placeholder="Enter password (min 6 characters)"
                     value={newUserData.password}
                     onChange={(e) => setNewUserData({ ...newUserData, password: e.target.value })}
                     className="w-full px-3 py-2 bg-slate-950 border border-slate-800 text-white placeholder-slate-500 rounded-xl text-xs focus:outline-none focus:border-[#2874f0]"

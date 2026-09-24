@@ -9,8 +9,8 @@ test.describe('Admin Console and Management End-to-End Suite', () => {
     if (await adminDemoBtn.isVisible()) {
       await adminDemoBtn.click();
     } else {
-      await form.locator('input[type="email"]').fill('ravikantsinghravi366@gmail.com');
-      await form.locator('input[type="password"]').fill('Admin@123');
+      await form.locator('input[type="email"]').fill(process.env.TEST_ADMIN_EMAIL || process.env.VITE_DEMO_ADMIN_EMAIL || 'ravikantsinghravi366@gmail.com');
+      await form.locator('input[type="password"]').fill(process.env.TEST_ADMIN_PASSWORD || process.env.VITE_DEMO_ADMIN_PASSWORD || '');
     }
     await form.locator('button[type="submit"]').click();
     await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 10000 });

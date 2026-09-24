@@ -9,8 +9,8 @@ test.describe('Checkout, Payment, and Order Lifecycle Flow', () => {
     if (await demoBtn.isVisible()) {
       await demoBtn.click();
     } else {
-      await form.locator('input[type="email"]').fill('customer@ecommerce.com');
-      await form.locator('input[type="password"]').fill('Customer@123');
+      await form.locator('input[type="email"]').fill(process.env.TEST_CUSTOMER_EMAIL || process.env.VITE_DEMO_CUSTOMER_EMAIL || 'customer@ecommerce.com');
+      await form.locator('input[type="password"]').fill(process.env.TEST_CUSTOMER_PASSWORD || process.env.VITE_DEMO_CUSTOMER_PASSWORD || '');
     }
     await form.locator('button[type="submit"]').click();
     await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 10000 });

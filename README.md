@@ -328,19 +328,21 @@ npx playwright test
 
 ---
 
-## 🔑 Pre-Seeded Demo Credentials
+## 🔑 Demo & Test Accounts Setup
 
 > [!NOTE]
-> **DEMO ENVIRONMENT NOTICE**: The accounts listed below are pre-seeded demonstration accounts for local and development evaluation only.
+> **DEMO ENVIRONMENT NOTICE**: Demo credentials are configured locally through environment variables and are **intentionally not committed to the repository**. Demo accounts are provisioned through environment configuration and are not published in this repository.
 
-| Role | Email | Password | Scope |
-| :--- | :--- | :--- | :--- |
-| **Administrator** | `ravikantsinghravi366@gmail.com` | `Admin@123` | Full Admin Console, Analytics, Product/Order/User Management |
-| **Store Manager** | `manager.ravi@ecommerce.com` | `Manager@123` | Fulfillment, Logistics & Dispatch Operations |
-| **Vendor** | `vendor.ravi@ecommerce.com` | `Vendor@123` | Inventory & Catalog Oversight |
-| **Customer** | `customer@ecommerce.com` | `Customer@123` | Storefront Shopping, Cart, Wishlist, Checkout & Tracking |
+For local development or testing, configure your desired credentials in your private `.env` file (copied from `.env.example`). When running in development mode, the system initializes corresponding accounts using BCrypt-hashed credentials:
 
-*Tip: The Storefront Login modal contains convenient **1-Click Demo Fill** buttons for instant access.*
+| Role | Environment Variables | Scope |
+| :--- | :--- | :--- |
+| **Administrator** | `DEMO_ADMIN_EMAIL`, `DEMO_ADMIN_PASSWORD` | Full Admin Console, Analytics, Product/Order/User Management |
+| **Store Manager** | `DEMO_MANAGER_EMAIL`, `DEMO_MANAGER_PASSWORD` | Fulfillment, Logistics & Dispatch Operations |
+| **Vendor** | `DEMO_VENDOR_EMAIL`, `DEMO_VENDOR_PASSWORD` | Inventory & Catalog Oversight |
+| **Customer** | `DEMO_CUSTOMER_EMAIL`, `DEMO_CUSTOMER_PASSWORD` | Storefront Shopping, Cart, Wishlist, Checkout & Tracking |
+
+*Tip: For local development, quick demo fill buttons can be enabled via `VITE_ENABLE_DEMO_LOGIN=true` in `client/.env`.*
 
 ### Sample Active Coupon Codes:
 - `WELCOME10` — 10% discount on orders above ₹499

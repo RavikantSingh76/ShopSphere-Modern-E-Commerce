@@ -2,8 +2,8 @@ import fs from 'fs';
 
 const API_BASE = 'http://localhost:8080/api';
 const ADMIN_CREDENTIALS = {
-  email: 'ravikantsinghravi366@gmail.com',
-  password: 'Admin@123'
+  email: process.env.ADMIN_EMAIL || process.env.DEMO_ADMIN_EMAIL || 'ravikantsinghravi366@gmail.com',
+  password: process.env.ADMIN_PASSWORD || process.env.DEMO_ADMIN_PASSWORD || ''
 };
 
 // Map DummyJSON category strings to ShopSphere core categories
